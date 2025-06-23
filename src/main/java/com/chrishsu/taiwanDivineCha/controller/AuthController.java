@@ -25,7 +25,7 @@ import java.util.Map;
 @RequestMapping("/api/auth") // 所有認證相關的 API 都以 /api/auth 開頭
 @CrossOrigin(origins = "http://localhost:4200", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS}, allowedHeaders = "*", allowCredentials = "true")
 public class AuthController {
-
+ 
   private final AuthService authService;
 
   public AuthController(AuthService authService) {
