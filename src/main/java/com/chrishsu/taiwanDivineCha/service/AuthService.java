@@ -5,6 +5,8 @@ import com.chrishsu.taiwanDivineCha.dto.LoginResponse;
 import com.chrishsu.taiwanDivineCha.dto.RegisterRequest;
 import com.chrishsu.taiwanDivineCha.dto.UserDto;
 
+import java.util.Map;
+
 public interface AuthService {
 
     // 註冊新用戶
@@ -21,4 +23,8 @@ public interface AuthService {
 
     // 驗證重設密碼 token 是否有效且未過期 (可選，用於前端檢查 token 有效性)
     boolean validateResetPasswordToken(String token);
+
+    Map<String, String> generateCaptcha();
+
+    boolean validateCaptcha(String captchaId, String userInputCaptcha);
 }

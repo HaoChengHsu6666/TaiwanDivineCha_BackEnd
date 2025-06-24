@@ -12,8 +12,13 @@ import com.chrishsu.taiwanDivineCha.exception.UserAlreadyExistsException; // 自
 import com.chrishsu.taiwanDivineCha.exception.BadCredentialsException; // 自定義異常
 
 import com.chrishsu.taiwanDivineCha.service.AuthService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid; // 用於啟用 DTO 中的 @NotBlank, @Email 等驗證
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -27,10 +32,6 @@ import java.util.Map;
 public class AuthController {
 
   private final AuthService authService;
-
-  public AuthController(AuthService authService) {
-    this.authService = authService;
-  }
 
   /**
    * 用戶註冊
@@ -61,14 +62,28 @@ public class AuthController {
    * @return 登入響應 (LoginResponse，實際可能包含 JWT Token)
    */
   @PostMapping("/login")
-  public ResponseEntity<LoginResponse> loginUser(@Valid @RequestBody LoginRequest loginRequest) {
+  public ResponseEntity<LoginResponse> loginUser(@Valid @RequestBody LoginRequest loginRequest,
+                                                 HttpServletRequest request) { // 引入 HttpServletRequest
     try {
+      String captchaId = null;
+      if (request.getCookies() != null) {
+        for (Cookie cookie : request.getCookies()) {
+          if ("captchaId".equals(cookie.getName())) {
+            captchaId = cookie.getValue();
+            break;
+          }
+        }
+      }
+
+      // 將從 Cookie 獲取的 captchaId 設置到 LoginRequest DTO 中
+      // 這是為了保持 AuthService 接口的簡潔性
+      loginRequest.setCaptchaId(captchaId);
+
       LoginResponse response = authService.loginUser(loginRequest);
       return ResponseEntity.ok(response); // 200 OK
     } catch (BadCredentialsException e) {
-      // 捕獲自定義的 BadCredentialsException，返回 401 Unauthorized
-      System.err.println("Login failed: " + e.getMessage()); // 記錄錯誤
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginResponse("Invalid email or password.", null)); // 統一錯誤訊息，不暴露具體原因
+      System.err.println("Login failed: " + e.getMessage());
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginResponse("Invalid email, password, or captcha.", null));
     }
   }
 
@@ -145,4 +160,48 @@ public class AuthController {
     System.err.println("Validation errors: " + errors); // 記錄驗證錯誤
     return errors;
   }
-}
+
+    public AuthController(AuthService authService) {
+      this.authService = authService;
+    }
+
+    // ... (現有的 registerUser, loginUser, forgotPassword, resetPassword 等方法)
+
+    /**
+     * 獲取驗證碼圖片（Base64 編碼）
+     * GET /api/auth/captcha
+     *
+     * @return ResponseEntity<String> 包含 Base64 編碼的驗證碼圖片數據（data:image/png;base64,...）
+     * 以及一個與之關聯的唯一 ID (例如通過 Cookie 或響應頭傳遞)
+     */
+    @GetMapping("/captcha")
+    public ResponseEntity<String> getCaptcha(HttpServletResponse response) { // 引入 HttpServletResponse
+      try {
+        // 調用 AuthService 來生成驗證碼和圖片
+        // 這裡的邏輯需要您在 AuthService 中實現
+        Map<String, String> captchaData = authService.generateCaptcha();
+        String captchaId = captchaData.get("captchaId"); // 從服務層獲取驗證碼 ID
+        String base64Image = captchaData.get("base64Image"); // 從服務層獲取 Base64 圖片
+
+        // 將 captchaId 設置為 HttpOnly Cookie，這樣前端 JS 無法直接讀取，提高安全性
+        // 確保您的前端在每次請求時都會自動帶上這個 Cookie
+        ResponseCookie cookie = ResponseCookie.from("captchaId", captchaId)
+                .httpOnly(true)       // HttpOnly: 防止客戶端腳本訪問 Cookie
+                .secure(true)         // Secure: 僅在 HTTPS 連接上發送 (生產環境應為 true)
+                .path("/api/auth")    // Path: 限制 Cookie 僅對 /api/auth 路徑有效
+                .maxAge(60 * 5)       // Max-Age: 設置 Cookie 過期時間 (例如 5 分鐘)
+                .sameSite("Lax")      // SameSite: 防止 CSRF 攻擊，通常設置為 Lax 或 Strict
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        // 返回 Base64 編碼的圖片字符串
+        return ResponseEntity.ok(base64Image); // 200 OK
+      } catch (Exception e) {
+        System.err.println("Error generating captcha: " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to generate captcha.");
+      }
+    }
+
+    // ... (全局異常處理 MethodArgumentNotValidException)
+  }
