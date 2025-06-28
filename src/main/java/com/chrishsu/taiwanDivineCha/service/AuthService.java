@@ -27,4 +27,6 @@ public interface AuthService {
     Map<String, String> generateCaptcha();
 
     boolean validateCaptcha(String captchaId, String userInputCaptcha);
+
+    boolean isEmailAlreadyRegistered(String email);
 }

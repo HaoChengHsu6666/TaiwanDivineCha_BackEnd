@@ -62,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
 
   /**
    * 註冊新用戶
-   * @param registerRequest 包含 email 和 password 的註冊請求
+   * @param registerRequest 包含 email 的註冊請求 (密碼將在後續設定)
    * @return 註冊成功的用戶信息 DTO
    */
   @Override
@@ -74,11 +74,15 @@ public class AuthServiceImpl implements AuthService {
 
     User newUser = new User();
     newUser.setEmail(registerRequest.getEmail());
-    // 對密碼進行加密
-    newUser.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+
+    // 註冊時不設定密碼，密碼將通過重設流程設定
     // createdDate 和 lastModifiedDate 將由 @PrePersist 自動設置
 
     User savedUser = userRepository.save(newUser);
+
+    // 在用戶註冊後，立即為其建立重設密碼的 Token 並發送郵件，用於初次設定密碼
+    createPasswordResetTokenForUser(savedUser.getEmail());
+
     return new UserDto(savedUser.getUserId(), savedUser.getEmail()); // 返回 DTO
   }
 
@@ -145,6 +149,7 @@ public class AuthServiceImpl implements AuthService {
 
   /**
    * 重設密碼 - 驗證 token 並更新密碼
+   * 此方法也用於新用戶初次設定密碼
    * @param token 重設密碼令牌
    * @param newPassword 新密碼
    */
@@ -308,5 +313,18 @@ public class AuthServiceImpl implements AuthService {
       // 拋出一個運行時異常，讓 Spring 處理，或者返回一個錯誤標識
       throw new RuntimeException("Failed to generate captcha image.", e);
     }
+  }
+
+  /**
+   * 檢查電子郵件是否已在數據庫中註冊。
+   *
+   * @param email 要檢查的電子郵件
+   * @return 如果 Email 已存在則返回 true，否則返回 false
+   */
+  public boolean isEmailAlreadyRegistered(String email) {
+    // 調用 UserRepository 檢查是否存在該 Email 的用戶
+    // 假設 UserRepository 有一個 findByEmail(String email) 方法，
+    // 並且如果找到則返回 User 實例，否則返回 null 或 Optional.empty()
+    return userRepository.findByEmail(email).isPresent();
   }
 }

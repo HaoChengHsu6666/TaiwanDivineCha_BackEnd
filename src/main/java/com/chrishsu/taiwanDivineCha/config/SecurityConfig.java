@@ -30,11 +30,23 @@ public class SecurityConfig {
     http
             .csrf(csrf -> csrf.disable()) // 禁用 CSRF
             .authorizeHttpRequests(auth -> auth
-                    // 允許未認證訪問的 API 路徑
-                    .requestMatchers("/api/auth/**").permitAll() // 允許所有 /api/auth/** 路徑無需認證
-                    .requestMatchers("/api/products/**").permitAll() // 假設產品相關 API 也公開
-                    .requestMatchers("/api/categories/**").permitAll() // 假設分類相關 API 也公開
-                    // 其他所有請求都需要認證
+
+                    // --- 優先允許無需認證的 API 路徑 ---
+                    .requestMatchers("/api/auth/register").permitAll()
+                    .requestMatchers("/api/auth/check-email").permitAll()
+                    .requestMatchers("/api/auth/captcha").permitAll()
+                    .requestMatchers("/api/auth/forgot-password").permitAll()
+                    .requestMatchers("/api/auth/reset-password").permitAll()
+                    .requestMatchers("/api/auth/verify-email").permitAll()
+
+                    // 也允許 Spring Boot 錯誤頁面，防止 403 for /error
+                    .requestMatchers("/error").permitAll()
+
+                    // 允許產品和分類相關 API 公開
+                    .requestMatchers("/api/products/**").permitAll()
+                    .requestMatchers("/api/categories/**").permitAll()
+
+                    // --- 其他所有請求都需要認證 ---
                     .anyRequest().authenticated()
             )
             .cors(cors -> cors.configurationSource(corsConfigurationSource())); // 使用這個方法來配置 CORS

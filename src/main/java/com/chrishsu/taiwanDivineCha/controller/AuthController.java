@@ -203,5 +203,24 @@ public class AuthController {
       }
     }
 
-    // ... (全局異常處理 MethodArgumentNotValidException)
+    /**
+     * 檢查電子郵件是否已註冊的 API。
+     * 該 API 在 Email 存在或不存在時都返回 200 OK，並在響應體中指示狀態。
+     *
+     * @param email 要檢查的電子郵件
+     * @return ResponseEntity 包含 { "exists": true/false }
+     */
+    @GetMapping("/check-email")
+    public ResponseEntity<Map<String, Boolean>> checkEmailExists(@RequestParam String email) {
+      // 調用 UserService 檢查 Email 是否存在
+      boolean exists = authService.isEmailAlreadyRegistered(email);
+
+      Map<String, Boolean> response = new HashMap<>();
+      response.put("exists", exists);
+
+      // 返回 200 OK 和包含 exists 狀態的 JSON 響應
+      return ResponseEntity.ok(response);
+    }
   }
+    // ... (全局異常處理 MethodArgumentNotValidException)
+

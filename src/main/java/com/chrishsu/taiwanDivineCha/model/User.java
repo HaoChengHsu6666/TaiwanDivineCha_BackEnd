@@ -21,8 +21,18 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    // Email 驗證相關欄位
+    @Column(name = "email_verification_token")
+    private String emailVerificationToken;
+
+    @Column(name = "email_verification_token_expiry")
+    private LocalDateTime emailVerificationTokenExpiry;
+
+    @Column(name = "is_email_verified", nullable = false)
+    private Boolean isEmailVerified = false; // 預設為未驗證
+
     @JsonIgnore //此參數在回傳至前端的(responsebody)時會被忽略(隱藏)
-    @Column(nullable = false)
+    @Column
     private String password;
 
     @Column(name = "reset_password_token", unique = true) // 確保 token 是唯一的
