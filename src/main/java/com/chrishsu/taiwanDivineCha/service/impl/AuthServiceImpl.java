@@ -75,15 +75,22 @@ public class AuthServiceImpl implements AuthService {
     User newUser = new User();
     newUser.setEmail(registerRequest.getEmail());
 
-    // 註冊時不設定密碼，密碼將通過重設流程設定
-    // createdDate 和 lastModifiedDate 將由 @PrePersist 自動設置
+    // --- 核心修改：生成 Email 驗證 token 並設置帳號為未驗證 ---
+    String emailVerificationToken = UUID.randomUUID().toString();
+    // 驗證連結 24 小時有效
+    LocalDateTime emailVerificationTokenExpiry = LocalDateTime.now().plusHours(24);
 
-    User savedUser = userRepository.save(newUser);
+    newUser.setEmailVerificationToken(emailVerificationToken);
+    newUser.setEmailVerificationTokenExpiry(emailVerificationTokenExpiry);
+    newUser.setIsEmailVerified(false); // 新註冊用戶預設為未驗證
 
-    // 在用戶註冊後，立即為其建立重設密碼的 Token 並發送郵件，用於初次設定密碼
-    createPasswordResetTokenForUser(savedUser.getEmail());
+    User savedUser = userRepository.save(newUser); // 保存包含驗證 token 的用戶信息
 
-    return new UserDto(savedUser.getUserId(), savedUser.getEmail()); // 返回 DTO
+    // --- 核心修改：發送 Email 驗證郵件 ---
+    String verificationLink = frontendResetPasswordUrl + emailVerificationToken;
+    emailService.sendEmailVerificationAndSetPasswordEmail(savedUser.getEmail(), verificationLink); // 您需要在 EmailService 中實現此方法
+
+    return new UserDto(savedUser.getUserId(), savedUser.getEmail());
   }
 
   /**
@@ -106,6 +113,11 @@ public class AuthServiceImpl implements AuthService {
     // 2. 驗證用戶名和密碼
     User user = userRepository.findByEmail(loginRequest.getEmail())
             .orElseThrow(() -> new BadCredentialsException("Email or password incorrect.")); // 統一錯誤訊息，避免洩露用戶是否存在
+
+    // 核心修改：登入時檢查 Email 是否已驗證
+    if (user.getIsEmailVerified() == null || !user.getIsEmailVerified()) {
+      throw new BadCredentialsException("Please verify your email address before logging in.");
+    }
 
     // 驗證密碼
     if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
@@ -135,16 +147,22 @@ public class AuthServiceImpl implements AuthService {
     }
 
     User user = userOptional.get();
-    String token = UUID.randomUUID().toString(); // 生成 UUID 作為令牌
 
+    // --- 核心修改：只有已驗證的 Email 才能請求重設密碼 ---
+    if (user.getIsEmailVerified() == null || !user.getIsEmailVerified()) {
+      System.out.println("Forgot password requested for unverified email: " + email);
+      return; // 返回成功訊息，但實際上不發送郵件
+    }
+
+    String token = UUID.randomUUID().toString(); // 生成 UUID 作為令牌
     user.setResetPasswordToken(token);
-    user.setResetPasswordExpires(LocalDateTime.now().plusHours(1)); // 設定令牌有效期，例如 1 小時
-    // lastModifiedDate 將由 @PreUpdate 自動設置
+    user.setResetPasswordExpires(LocalDateTime.now().plusMinutes(10)); // 設定令牌有效期， 10分鐘
     userRepository.save(user);
 
-    // 構建重設連結
+    // 構建重設連結 (這個連結現在用於「忘記密碼」和「首次設定密碼」)
     String resetLink = frontendResetPasswordUrl + token;
     emailService.sendResetPasswordEmail(user.getEmail(), resetLink);
+
   }
 
   /**
@@ -156,35 +174,59 @@ public class AuthServiceImpl implements AuthService {
   @Override
   @Transactional
   public void resetPassword(String token, String newPassword) {
-    Optional<User> userOptional = userRepository.findByResetPasswordToken(token);
+    System.out.println("Received token in resetPassword: " + token); // Log the token received
 
-    if (userOptional.isEmpty()) {
-      throw new InvalidTokenException("Invalid or missing reset password token.");
-    }
+    // 嘗試查找 email_verification_token
+    Optional<User> userByEmailVerificationToken = userRepository.findByEmailVerificationToken(token);
+    System.out.println("userByEmailVerificationToken.isPresent(): " + userByEmailVerificationToken.isPresent());
 
-    User user = userOptional.get();
+    // 嘗試查找 reset_password_token
+    Optional<User> userByResetPasswordToken = userRepository.findByResetPasswordToken(token);
+    System.out.println("userByResetPasswordToken.isPresent(): " + userByResetPasswordToken.isPresent());
 
-    // 檢查令牌是否過期
-    if (user.getResetPasswordExpires() == null || user.getResetPasswordExpires().isBefore(LocalDateTime.now())) {
-      // 使過期令牌失效，避免再次嘗試
+    User user;
+
+    if (userByEmailVerificationToken.isPresent()) {
+      user = userByEmailVerificationToken.get();
+      System.out.println("Found user by email verification token: " + user.getEmail());
+
+      // 檢查 Email 驗證 Token 是否過期
+      if (user.getEmailVerificationTokenExpiry() == null || user.getEmailVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
+        throw new InvalidTokenException("Email verification token is expired or invalid.");
+      }
+      // 驗證成功後，標記 Email 為已驗證
+      user.setIsEmailVerified(true);
+      // 清空 email_verification_token
+      user.setEmailVerificationToken(null);
+      user.setEmailVerificationTokenExpiry(null);
+
+    } else if (userByResetPasswordToken.isPresent()) {
+      user = userByResetPasswordToken.get();
+      System.out.println("Found user by reset password token: " + user.getEmail());
+
+      // 檢查重設密碼 Token 是否過期
+      if (user.getResetPasswordExpires() == null || user.getResetPasswordExpires().isBefore(LocalDateTime.now())) {
+        throw new InvalidTokenException("Reset password token is expired or invalid.");
+      }
+      // 清空 reset_password_token
       user.setResetPasswordToken(null);
       user.setResetPasswordExpires(null);
-      userRepository.save(user); // 保存更新以使令牌失效
-      throw new InvalidTokenException("Reset password token has expired. Please request a new one.");
+
+    } else {
+      System.err.println("No user found for token: " + token); // Log which token failed
+      // 如果兩種 Token 都找不到對應的用戶，則拋出無效 Token 異常
+      throw new InvalidTokenException("Invalid token provided.");
     }
 
-    // 密碼驗證邏輯通常在 DTO 的 @Valid 註解中處理，但這裡做一個簡單的服務層檢查
-    if (newPassword == null || newPassword.length() < 6) {
-      throw new IllegalArgumentException("Password must be at least 6 characters long.");
+    // 驗證新密碼的複雜度 (這裡可以重複前端的驗證邏輯，作為二次驗證)
+    // 這個檢查應在確定用戶存在且 Token 有效之後進行
+    if (newPassword == null || newPassword.length() < 8 ||
+            !newPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$")) {
+      throw new IllegalArgumentException("Password does not meet complexity requirements.");
     }
 
-    // 哈希新密碼並更新
+    // 加密新密碼並保存用戶信息
     user.setPassword(passwordEncoder.encode(newPassword));
-
-    // 使令牌失效 (一次性使用)
-    user.setResetPasswordToken(null);
-    user.setResetPasswordExpires(null);
-    // lastModifiedDate 將由 @PreUpdate 自動設置
     userRepository.save(user);
   }
 
@@ -327,4 +369,5 @@ public class AuthServiceImpl implements AuthService {
     // 並且如果找到則返回 User 實例，否則返回 null 或 Optional.empty()
     return userRepository.findByEmail(email).isPresent();
   }
+
 }

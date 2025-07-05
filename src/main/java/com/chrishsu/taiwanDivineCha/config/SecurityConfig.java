@@ -32,13 +32,12 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
                     // --- 優先允許無需認證的 API 路徑 ---
+                    .requestMatchers("/api/auth/login").permitAll()
                     .requestMatchers("/api/auth/register").permitAll()
                     .requestMatchers("/api/auth/check-email").permitAll()
                     .requestMatchers("/api/auth/captcha").permitAll()
                     .requestMatchers("/api/auth/forgot-password").permitAll()
                     .requestMatchers("/api/auth/reset-password").permitAll()
-                    .requestMatchers("/api/auth/verify-email").permitAll()
-
                     // 也允許 Spring Boot 錯誤頁面，防止 403 for /error
                     .requestMatchers("/error").permitAll()
 

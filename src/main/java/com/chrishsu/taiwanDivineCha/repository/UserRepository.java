@@ -18,4 +18,6 @@ public interface UserRepository extends JpaRepository<User, Integer> { // User E
     // 您可能還需要其他查詢方法，例如根據 email 和 password 查找（用於登入，但通常直接在Service層處理密碼驗證）
     // 或者判斷 email 是否已存在 (如果不在 service 層做 existsById)
     boolean existsByEmail(String email);
+
+    Optional<User> findByEmailVerificationToken(String emailVerificationToken); //
 }
