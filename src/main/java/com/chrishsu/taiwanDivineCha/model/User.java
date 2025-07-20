@@ -5,13 +5,18 @@ import jakarta.persistence.*;
 import lombok.Data;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Data // Lombok 註解，自動生成 getter, setter, equals, hashCode, toString
 @Entity
 @Table(name = "users") // 對應資料庫表名
-public class User {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 自動增長的主鍵
@@ -66,5 +71,41 @@ public class User {
     @PreUpdate
     protected void onUpdate() {
         this.lastModifiedDate = LocalDateTime.now();
+    }
+
+    // --- UserDetails Methods ---
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // For now, we'll return a simple "USER" role.
+        // You can expand this later to support multiple roles.
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    @Override
+    public String getUsername() {
+        // JWT's subject will be the user's email
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        // You can use the isEmailVerified flag to enable/disable users
+        return isEmailVerified;
     }
 }

@@ -2,8 +2,8 @@ package com.chrishsu.taiwanDivineCha.controller;
 
 import com.chrishsu.taiwanDivineCha.dto.UserDto; // 引入用於返回用戶信息的 DTO
 import com.chrishsu.taiwanDivineCha.dto.ForgotPasswordRequest;
-import com.chrishsu.taiwanDivineCha.dto.LoginRequest;
-import com.chrishsu.taiwanDivineCha.dto.LoginResponse; // 引入登入響應 DTO
+import com.chrishsu.taiwanDivineCha.dto.auth.AuthenticationResponse;
+import com.chrishsu.taiwanDivineCha.dto.auth.LoginRequest;
 import com.chrishsu.taiwanDivineCha.dto.RegisterRequest; // 引入註冊請求 DTO
 import com.chrishsu.taiwanDivineCha.dto.ResetPasswordRequest;
 
@@ -11,6 +11,7 @@ import com.chrishsu.taiwanDivineCha.exception.InvalidTokenException; // 自定�
 import com.chrishsu.taiwanDivineCha.exception.UserAlreadyExistsException; // 自定義異常
 import com.chrishsu.taiwanDivineCha.exception.BadCredentialsException; // 自定義異常
 
+import com.chrishsu.taiwanDivineCha.security.JwtUtil;
 import com.chrishsu.taiwanDivineCha.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,6 +21,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,9 +37,15 @@ import java.util.Map;
 public class AuthController {
 
   private final AuthService authService;
+  private final AuthenticationManager authenticationManager;
+  private final UserDetailsService userDetailsService;
+  private final JwtUtil jwtUtil;
 
-  public AuthController(AuthService authService) {
+  public AuthController(AuthService authService, AuthenticationManager authenticationManager, UserDetailsService userDetailsService, JwtUtil jwtUtil) {
     this.authService = authService;
+    this.authenticationManager = authenticationManager;
+    this.userDetailsService = userDetailsService;
+    this.jwtUtil = jwtUtil;
   }
 
   /**
@@ -71,12 +82,13 @@ public class AuthController {
    * 用戶登入
    * POST /api/auth/login
    * @param loginRequest 登入請求 DTO
-   * @return 登入響應 (LoginResponse，實際可能包含 JWT Token)
+   * @return 登入響應 (AuthenticationResponse，包含 JWT Token)
    */
   @PostMapping("/login")
-  public ResponseEntity<LoginResponse> loginUser(@Valid @RequestBody LoginRequest loginRequest,
+  public ResponseEntity<AuthenticationResponse> loginUser(@Valid @RequestBody LoginRequest loginRequest,
                                                  HttpServletRequest request) { // 引入 HttpServletRequest
     try {
+      // --- Start of Captcha Validation Logic (Preserved) ---
       String captchaId = null;
       if (request.getCookies() != null) {
         for (Cookie cookie : request.getCookies()) {
@@ -86,17 +98,32 @@ public class AuthController {
           }
         }
       }
+      if (captchaId == null || !authService.validateCaptcha(captchaId, loginRequest.getCaptcha())) {
+          throw new BadCredentialsException("Invalid captcha.");
+      }
+      // --- End of Captcha Validation Logic ---
 
-      // 將從 Cookie 獲取的 captchaId 設置到 LoginRequest DTO 中
-      // 這是為了保持 AuthService 接口的簡潔性
-      loginRequest.setCaptchaId(captchaId);
+      // --- Start of JWT Authentication Logic (New) ---
+      authenticationManager.authenticate(
+              new UsernamePasswordAuthenticationToken(
+                      loginRequest.getEmail(),
+                      loginRequest.getPassword()
+              )
+      );
 
-      LoginResponse response = authService.loginUser(loginRequest);
-      return ResponseEntity.ok(response); // 200 OK
+      final UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
+      final String jwt = jwtUtil.generateToken(userDetails);
+
+      return ResponseEntity.ok(new AuthenticationResponse(jwt));
+      // --- End of JWT Authentication Logic ---
+
     } catch (BadCredentialsException e) {
       System.err.println("Login failed: " + e.getMessage());
-      // 這邊已經返回 LoginResponse DTO，是 JSON 格式，保持不變
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginResponse("Invalid email, password, or captcha.", null));
+      // For security, return a generic error message.
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthenticationResponse("Invalid email, password, or captcha."));
+    } catch (Exception e) {
+        System.err.println("An unexpected error occurred during login: " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponse("An unexpected error occurred."));
     }
   }
 
