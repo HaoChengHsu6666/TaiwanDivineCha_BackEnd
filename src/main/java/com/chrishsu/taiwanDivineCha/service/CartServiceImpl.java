@@ -55,7 +55,7 @@ public class CartServiceImpl implements CartService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not enough stock");
         }
 
-        Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProduct(cart, product);
+        Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProductAndWeight(cart, product, addToCartRequest.getWeight());
 
         if (existingCartItem.isPresent()) {
             CartItem cartItem = existingCartItem.get();
@@ -70,6 +70,7 @@ public class CartServiceImpl implements CartService {
             newCartItem.setCart(cart);
             newCartItem.setProduct(product);
             newCartItem.setQuantity(addToCartRequest.getQuantity());
+            newCartItem.setWeight(addToCartRequest.getWeight());
             cartItemRepository.save(newCartItem);
         }
     }

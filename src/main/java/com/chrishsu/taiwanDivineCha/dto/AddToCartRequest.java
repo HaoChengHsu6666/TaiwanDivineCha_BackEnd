@@ -14,4 +14,7 @@ public class AddToCartRequest {
     @NotNull
     @Min(1)
     private Integer quantity;
+
+    @NotNull
+    private Integer weight;
 }
