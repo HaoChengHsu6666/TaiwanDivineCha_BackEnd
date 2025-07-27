@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.26, for Win64 (x86_64)
 --
--- Host: localhost    Database: mall
+-- Host: localhost    Database: taiwan_divine_cha
 -- ------------------------------------------------------
 -- Server version	8.0.26
 
@@ -16,31 +16,30 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `user`
+-- Table structure for table `order`
 --
 
-DROP TABLE IF EXISTS `user`;
+DROP TABLE IF EXISTS `order`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `user` (
-  `user_id` int NOT NULL AUTO_INCREMENT,
-  `email` varchar(256) NOT NULL,
-  `password` varchar(256) NOT NULL,
+CREATE TABLE `order` (
+  `order_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `total_amount` int NOT NULL,
   `created_date` timestamp NOT NULL,
   `last_modified_date` timestamp NOT NULL,
-  PRIMARY KEY (`user_id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  PRIMARY KEY (`order_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `user`
+-- Dumping data for table `order`
 --
 
-LOCK TABLES `user` WRITE;
-/*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES (6,'test6@gmail.com','202cb962ac59075b964b07152d234b70','2022-06-30 12:11:32','2022-06-30 12:11:32');
-/*!40000 ALTER TABLE `user` ENABLE KEYS */;
+LOCK TABLES `order` WRITE;
+/*!40000 ALTER TABLE `order` DISABLE KEYS */;
+INSERT INTO `order` VALUES (1,6,100110,'2022-06-02 08:51:49','2022-06-02 08:51:49'),(3,6,1950000,'2022-07-04 10:55:13','2022-07-04 10:55:13'),(4,6,1950000,'2022-07-04 12:04:41','2022-07-04 12:04:41'),(5,6,1950000,'2022-07-04 12:07:38','2022-07-04 12:07:38'),(6,6,1950000,'2022-07-04 12:10:23','2022-07-04 12:10:23'),(7,6,1950000,'2022-07-04 12:13:58','2022-07-04 12:13:58'),(8,6,1950000,'2022-07-04 12:18:27','2022-07-04 12:18:27'),(9,6,1950000,'2022-07-04 12:19:54','2022-07-04 12:19:54'),(10,6,1950000,'2022-07-04 12:22:13','2022-07-04 12:22:13'),(11,6,1950000,'2022-07-05 04:47:20','2022-07-05 04:47:20'),(12,6,1050000,'2022-07-05 04:48:42','2022-07-05 04:48:42');
+/*!40000 ALTER TABLE `order` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

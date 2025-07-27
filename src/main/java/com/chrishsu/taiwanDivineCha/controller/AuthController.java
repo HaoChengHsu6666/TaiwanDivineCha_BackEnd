@@ -1,16 +1,14 @@
 package com.chrishsu.taiwanDivineCha.controller;
 
-import com.chrishsu.taiwanDivineCha.dto.UserDto; // 引入用於返回用戶信息的 DTO
-import com.chrishsu.taiwanDivineCha.dto.ForgotPasswordRequest;
+import com.chrishsu.taiwanDivineCha.dto.*;
 import com.chrishsu.taiwanDivineCha.dto.auth.AuthenticationResponse;
 import com.chrishsu.taiwanDivineCha.dto.auth.LoginRequest;
-import com.chrishsu.taiwanDivineCha.dto.RegisterRequest; // 引入註冊請求 DTO
-import com.chrishsu.taiwanDivineCha.dto.ResetPasswordRequest;
 
 import com.chrishsu.taiwanDivineCha.exception.InvalidTokenException; // 自定義異常
 import com.chrishsu.taiwanDivineCha.exception.UserAlreadyExistsException; // 自定義異常
 import com.chrishsu.taiwanDivineCha.exception.BadCredentialsException; // 自定義異常
 
+import com.chrishsu.taiwanDivineCha.model.User;
 import com.chrishsu.taiwanDivineCha.security.JwtUtil;
 import com.chrishsu.taiwanDivineCha.service.AuthService;
 import jakarta.servlet.http.Cookie;
@@ -23,6 +21,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -265,6 +264,34 @@ public class AuthController {
 
     // 返回 200 OK 和包含 exists 狀態的 JSON 響應
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 獲取當前登入用戶的個人資料。
+   * GET /api/auth/profile
+   * @param user 當前認證用戶的 User 物件 (由 Spring Security 提供)
+   * @return 用戶個人資料 DTO
+   */
+  @GetMapping("/profile")
+  public ResponseEntity<UserProfileDto> getUserProfile(@AuthenticationPrincipal User user) {
+    // 使用用戶的 email 從 AuthService 獲取個人資料
+    UserProfileDto userProfile = authService.getUserProfile(user.getEmail());
+    return ResponseEntity.ok(userProfile);
+  }
+
+  /**
+   * 更新當前登入用戶的個人資料。
+   * PUT /api/auth/profile
+   * @param user 當前認證用戶的 User 物件
+   * @param userProfileDto 包含要更新的個人資料的 DTO
+   * @return 更新後的用戶個人資料 DTO
+   */
+  @PutMapping("/profile")
+  public ResponseEntity<UserProfileDto> updateUserProfile(@AuthenticationPrincipal User user,
+                                                         @Valid @RequestBody UserProfileDto userProfileDto) {
+    // 使用用戶的 email 和傳入的 DTO 更新個人資料
+    UserProfileDto updatedProfile = authService.updateUserProfile(user.getEmail(), userProfileDto);
+    return ResponseEntity.ok(updatedProfile);
   }
 
 }

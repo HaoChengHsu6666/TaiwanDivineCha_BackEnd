@@ -8,11 +8,13 @@ import com.chrishsu.taiwanDivineCha.dto.UserDto; // 用於返回用戶信息
 import com.chrishsu.taiwanDivineCha.dto.LoginRequest;
 import com.chrishsu.taiwanDivineCha.dto.LoginResponse;
 import com.chrishsu.taiwanDivineCha.dto.RegisterRequest;
+import com.chrishsu.taiwanDivineCha.dto.UserProfileDto; // 引入 UserProfileDto
 import com.chrishsu.taiwanDivineCha.exception.InvalidTokenException; // 自定義異常
 import com.chrishsu.taiwanDivineCha.exception.UserAlreadyExistsException; // 自定義異常
 import com.chrishsu.taiwanDivineCha.exception.BadCredentialsException; // 自定義異常，或使用 Spring Security 內建的
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UsernameNotFoundException; // 引入 UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ import org.springframework.data.redis.core.StringRedisTemplate; // 引入 RedisT
 import java.time.Duration; // 用於設置 Redis 鍵的過期時間
 
 import java.time.LocalDateTime;
+import java.time.LocalDate; // 引入 LocalDate
 import java.util.UUID;
 import java.util.Optional;
 import java.util.HashMap;
@@ -370,4 +373,59 @@ public class AuthServiceImpl implements AuthService {
     return userRepository.findByEmail(email).isPresent();
   }
 
+  /**
+   * 獲取用戶個人資料。
+   * @param email 用戶郵箱
+   * @return 用戶個人資料 DTO
+   * @throws UsernameNotFoundException 如果找不到用戶
+   */
+  @Override
+  @Transactional(readOnly = true)
+  public UserProfileDto getUserProfile(String email) {
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+    UserProfileDto userProfileDto = new UserProfileDto();
+    userProfileDto.setEmail(user.getEmail());
+    userProfileDto.setName(user.getName());
+    userProfileDto.setMobile(user.getMobile());
+    userProfileDto.setBirth(user.getBirth());
+    userProfileDto.setIsProfileCompleted(user.getIsProfileCompleted());
+    return userProfileDto;
+  }
+
+  /**
+   * 更新用戶個人資料。
+   * @param email 用戶郵箱
+   * @param userProfileDto 包含更新資料的 DTO
+   * @return 更新後的用戶個人資料 DTO
+   * @throws UsernameNotFoundException 如果找不到用戶
+   */
+  @Override
+  @Transactional
+  public UserProfileDto updateUserProfile(String email, UserProfileDto userProfileDto) {
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+    user.setName(userProfileDto.getName());
+    user.setMobile(userProfileDto.getMobile());
+    user.setBirth(userProfileDto.getBirth());
+
+    // 如果姓名不為空，則將 isProfileCompleted 設置為 true
+    if (userProfileDto.getName() != null && !userProfileDto.getName().trim().isEmpty()) {
+        user.setIsProfileCompleted(true);
+    } else {
+        user.setIsProfileCompleted(false); // 如果姓名為空，則設置為 false
+    }
+
+    User updatedUser = userRepository.save(user);
+
+    UserProfileDto updatedUserProfileDto = new UserProfileDto();
+    updatedUserProfileDto.setEmail(updatedUser.getEmail());
+    updatedUserProfileDto.setName(updatedUser.getName());
+    updatedUserProfileDto.setMobile(updatedUser.getMobile());
+    updatedUserProfileDto.setBirth(updatedUser.getBirth());
+    updatedUserProfileDto.setIsProfileCompleted(updatedUser.getIsProfileCompleted());
+    return updatedUserProfileDto;
+  }
 }

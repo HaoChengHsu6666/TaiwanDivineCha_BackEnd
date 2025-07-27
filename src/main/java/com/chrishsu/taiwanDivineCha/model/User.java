@@ -54,6 +54,18 @@ public class User implements UserDetails {
     @Column(name = "last_modified_date", nullable = false)
     private LocalDateTime lastModifiedDate;
 
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "mobile")
+    private String mobile;
+
+    @Column(name = "birth")
+    private java.time.LocalDate birth; // 使用 java.time.LocalDate 對應 SQL 的 DATE 類型
+
+    @Column(name = "is_profile_completed", nullable = false, columnDefinition = "boolean default false")
+    private Boolean isProfileCompleted = false; // 預設為 false
+
     // 您可能需要手動添加 @PrePersist 和 @PreUpdate 如果不啟用 Spring Data JPA Auditing
     // 或者確保您的 @EnableJpaAuditing 配置正確 (通常在主應用類或配置類中)
     // 如果沒有啟用 auditing，那麼 @CreatedDate 和 @LastModifiedDate 不會自動工作

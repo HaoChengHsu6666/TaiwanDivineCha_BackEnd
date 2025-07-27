@@ -1,9 +1,6 @@
 package com.chrishsu.taiwanDivineCha.service;
 
-import com.chrishsu.taiwanDivineCha.dto.LoginRequest;
-import com.chrishsu.taiwanDivineCha.dto.LoginResponse;
-import com.chrishsu.taiwanDivineCha.dto.RegisterRequest;
-import com.chrishsu.taiwanDivineCha.dto.UserDto;
+import com.chrishsu.taiwanDivineCha.dto.*;
 
 import java.util.Map;
 
@@ -29,4 +26,10 @@ public interface AuthService {
     boolean validateCaptcha(String captchaId, String userInputCaptcha);
 
     boolean isEmailAlreadyRegistered(String email);
+
+    // 獲取用戶個人資料
+    UserProfileDto getUserProfile(String email);
+
+    // 更新用戶個人資料
+    UserProfileDto updateUserProfile(String email, UserProfileDto userProfileDto);
 }
