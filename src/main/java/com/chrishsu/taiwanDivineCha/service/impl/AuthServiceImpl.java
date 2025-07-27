@@ -128,8 +128,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // 如果是 JWT 認證，這裡會生成 JWT token
-    // 假設這裡返回一個簡單的成功響應
-    return new LoginResponse("Login successful!", user.getEmail());
+    return new LoginResponse("Login successful!", user.getEmail(), user.getIsProfileCompleted());
     // 實際應用中，這裡會返回 JWT Token
   }
 
