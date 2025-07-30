@@ -14,4 +14,7 @@ public class UpdateCartItemRequest {
     @NotNull
     @Min(0) // 允許數量為0，表示刪除該商品
     private Integer quantity;
+
+    @NotNull
+    private Integer weight;
 }

@@ -82,7 +82,7 @@ public class CartServiceImpl implements CartService {
         Product product = productRepository.findById(updateCartItemRequest.getProductId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
 
-        Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProduct(cart, product);
+        Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProductAndWeight(cart, product, updateCartItemRequest.getWeight());
 
         if (existingCartItem.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cart item not found");
@@ -104,18 +104,12 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public void removeCartItem(User user, String productId) {
+    public void removeCartItem(User user, String productId, Integer weight) {
         Cart cart = getOrCreateCart(user);
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
 
-        Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProduct(cart, product);
-
-        if (existingCartItem.isPresent()) {
-            cartItemRepository.delete(existingCartItem.get());
-        } else {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cart item not found");
-        }
+        cartItemRepository.deleteByCartAndProductAndWeight(cart, product, weight);
     }
 
     @Override
@@ -126,14 +120,25 @@ public class CartServiceImpl implements CartService {
         List<CartItemDto> cartItemDtos = cartItems.stream().map(cartItem -> {
             Product product = cartItem.getProduct();
             CartItemDto dto = new CartItemDto();
+
+            double priceMultiplier = 1.0;
+            if (cartItem.getWeight() == 300) { // 半斤
+                priceMultiplier = 0.5;
+            } else if (cartItem.getWeight() == 150) { // 四兩
+                priceMultiplier = 0.25;
+            }
+
+            int adjustedPrice = (int) Math.round(product.getPrice() * priceMultiplier);
+
             dto.setProductId(product.getId());
             dto.setProductName(product.getName());
             dto.setImageUrl(product.getImageUrl());
             dto.setCategory(product.getCategory());
-            dto.setPrice(product.getPrice());
+            dto.setPrice(adjustedPrice);
             dto.setStock(product.getStock());
             dto.setQuantity(cartItem.getQuantity());
-            dto.setSubtotal(product.getPrice() * cartItem.getQuantity());
+            dto.setWeight(cartItem.getWeight());
+            dto.setSubtotal(adjustedPrice * cartItem.getQuantity());
             return dto;
         }).collect(Collectors.toList());
 

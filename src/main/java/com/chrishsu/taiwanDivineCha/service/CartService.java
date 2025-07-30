@@ -10,6 +10,6 @@ public interface CartService {
     Cart getOrCreateCart(User user);
     void addToCart(User user, AddToCartRequest addToCartRequest);
     void updateCartItem(User user, UpdateCartItemRequest updateCartItemRequest);
-    void removeCartItem(User user, String productId);
+    void removeCartItem(User user, String productId, Integer weight);
     CartDto getCart(User user);
 }

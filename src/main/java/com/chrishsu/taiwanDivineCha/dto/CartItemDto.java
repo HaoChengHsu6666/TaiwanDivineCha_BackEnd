@@ -13,4 +13,5 @@ public class CartItemDto {
     private Integer stock;
     private Integer quantity;
     private Integer subtotal;
+    private Integer weight;
 }
