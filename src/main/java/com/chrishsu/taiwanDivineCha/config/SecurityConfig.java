@@ -33,7 +33,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // --- 允許無需認證的公開 API 路徑 ---
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/validate-token",
+                                "/api/auth/captcha",
                                 "/api/products/**",
                                 "/api/categories/**",
                                 "/error"

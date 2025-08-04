@@ -266,6 +266,13 @@ public class AuthController {
     return ResponseEntity.ok(response);
   }
 
+  @PostMapping("/validate-token")
+  public ResponseEntity<Map<String, Boolean>> validateToken() {
+    Map<String, Boolean> response = new HashMap<>();
+    response.put("isValid", true);
+    return ResponseEntity.ok(response);
+  }
+
   /**
    * 獲取當前登入用戶的個人資料。
    * GET /api/auth/profile
