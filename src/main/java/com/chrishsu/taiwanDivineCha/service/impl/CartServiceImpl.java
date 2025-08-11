@@ -1,4 +1,4 @@
-package com.chrishsu.taiwanDivineCha.service;
+package com.chrishsu.taiwanDivineCha.service.impl;
 
 import com.chrishsu.taiwanDivineCha.dto.AddToCartRequest;
 import com.chrishsu.taiwanDivineCha.dto.CartDto;
@@ -11,6 +11,7 @@ import com.chrishsu.taiwanDivineCha.model.User;
 import com.chrishsu.taiwanDivineCha.repository.CartItemRepository;
 import com.chrishsu.taiwanDivineCha.repository.CartRepository;
 import com.chrishsu.taiwanDivineCha.repository.ProductRepository;
+import com.chrishsu.taiwanDivineCha.service.CartService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
